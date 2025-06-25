@@ -434,6 +434,93 @@
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('data:text/javascript;base64,').catch(() => {});
         }
+
+        // Système de notifications automatiques
+        function initializeNotifications() {
+            // Demander la permission pour les notifications
+            if ('Notification' in window) {
+                if (Notification.permission === 'default') {
+                    Notification.requestPermission().then(permission => {
+                        if (permission === 'granted') {
+                            console.log('Notifications autorisées');
+                            scheduleDailyNotifications();
+                            showFeedback('🔔 Notifications activées ! Rappel quotidien à 19h (lun-ven)', 'success');
+                        }
+                    });
+                } else if (Notification.permission === 'granted') {
+                    scheduleDailyNotifications();
+                }
+            }
+        }
+
+        function scheduleDailyNotifications() {
+            // Calculer le prochain rappel à 19h en semaine
+            const now = new Date();
+            const nextNotification = getNextWorkdayAt19h(now);
+            const timeUntilNotification = nextNotification.getTime() - now.getTime();
+
+            console.log(`Prochaine notification programmée pour: ${nextNotification.toLocaleString()}`);
+
+            setTimeout(() => {
+                sendNotification();
+                // Programmer la suivante (24h plus tard si en semaine, sinon calculer)
+                scheduleDailyNotifications();
+            }, timeUntilNotification);
+        }
+
+        function getNextWorkdayAt19h(fromDate) {
+            const target = new Date(fromDate);
+            
+            // Définir l'heure à 19h00
+            target.setHours(19, 0, 0, 0);
+            
+            // Si c'est déjà passé aujourd'hui, passer au jour suivant
+            if (target <= fromDate) {
+                target.setDate(target.getDate() + 1);
+            }
+            
+            // Avancer jusqu'au prochain jour de semaine (lundi=1 à vendredi=5)
+            while (target.getDay() === 0 || target.getDay() === 6) { // 0=dimanche, 6=samedi
+                target.setDate(target.getDate() + 1);
+            }
+            
+            return target;
+        }
+
+        function sendNotification() {
+            const now = new Date();
+            const dayOfWeek = now.getDay(); // 0=dimanche, 1=lundi, ..., 6=samedi
+            
+            // Vérifier que c'est un jour de semaine (lundi à vendredi)
+            if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+                if (Notification.permission === 'granted') {
+                    const notification = new Notification('⏰ Heures Supplémentaires', {
+                        body: 'Il est 19h ! N\'oubliez pas de saisir vos horaires du jour.',
+                        icon: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0ODggNDg4Ij48cGF0aCBkPSJtMjQ0IDE0NGgyMDZhMTAgMTAgMCAwIDEtMjAmLjQ2NjE3ODUzZTQtTDIwM1JteFJuUlRMejQ4L3N2Zz49',
+                        badge: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0ODggNDg4Ij48cGF0aCBkPSJtMjQ0IDE0NGgyMDZhMTAgMTAgMCAwIDEtMjAmLjQ2NjE3ODUzZTQtTDIwM1JteFJuUlRMejQ4L3N2Zz49',
+                        tag: 'heures-sup-reminder',
+                        requireInteraction: true
+                    });
+
+                    // Gérer le clic sur la notification
+                    notification.onclick = function() {
+                        window.focus();
+                        notification.close();
+                    };
+
+                    // Fermer automatiquement après 30 secondes
+                    setTimeout(() => {
+                        notification.close();
+                    }, 30000);
+                }
+            }
+        }
+
+        // Initialiser les notifications au chargement de la page
+        window.addEventListener('load', () => {
+            // Attendre 2 secondes avant de demander les permissions
+            setTimeout(initializeNotifications, 2000);
+        });
     </script>
 </body>
 </html>
